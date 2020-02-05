@@ -31,4 +31,5 @@ class Publisher:
             self.pub_sock.bind("tcp://*:" + self.own_address.split(":")[1])
         
         self.pub_sock.send(topic + "#" + content)
+        
 

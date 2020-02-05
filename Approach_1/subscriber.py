@@ -29,9 +29,24 @@ class Subscriber:
                 
                 except Exception as ex:
                     print("something happened... " + str(ex))
-        
-        threading.Thread
 
+        threading.Thread(target=handler, args=self.own_address.split(":")).start()
+    
+    def register_sub(topic):
+        print("***** register_sub *****)
+        sock = Context().socket(zmq.REQ)
+        sock.connect("tcp://" + str(self.broker_ip) + ":" + str(self.broker_port))
+        sock.send("REG#" + self.own_address + "#" + topic)
+
+        content = sock.recv().split("#")
+        print("***** recv content:\n" + content + "*****\n")
+        if content[0] == "DONE_REG":
+            for addr in eval(content[1]):
+                if not addr in self.pub_set:
+                    self.sub_sock.connect("tcp://" + addr)
+                    self.pub_set.add(addr)
+        
+        self.sub_sock.setsockopt(zmq.SUBSCRIBE, topic)
 
 
 

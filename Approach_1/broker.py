@@ -14,6 +14,7 @@ class Broker:
 
     
     def register_pub(self, topic, address):
+        print("****** registering pub *******")
         if address in self.pub_topic_map:
             self.pub_topic_map[address].add(topic)
         else:
@@ -27,7 +28,9 @@ class Broker:
         if topic in self.topic_sub_map:
             msg_sock = zmq.Context().socket(zmq.REQ)
             for sub_addr in self.topic_sub_map[topic]:
-                msg_sock.connect(sub_addr)
+                print("sub addr:\n" + sub_addr)
+
+                msg_sock.connect("tcp://" + sub_addr)
                 msg_sock.send("ADD#" + topic + "#" + address)
                 print(msg_sock.recv())
             msg_sock.close()
@@ -63,6 +66,7 @@ class Broker:
     
 
     def register_sub(self, topic, address):
+        print("***** registering sub *****")
         if address in self.sub_topic_map:
             self.sub_topic_map[address].add(topic)
         else:
@@ -99,18 +103,21 @@ class Broker:
             sock.bind("tcp://*:" + str(port))
 
             while True:
-                print('waiting for pub')
+                print('waiting for pub ... ')
                 try:
                     content = sock.recv()
                     print("raw msg from pub port:\n" + content)
                     content = content.split("#")
+                    print("splited content:\n" + str(content))
                     if content[0] == "REG":
+                        print("is reg")
                         self.register_pub(content[2], content[1])
+                        print("sending")
                         sock.send("DONE_REG")
-                    elif content[1] == "CCL":
+                    elif content[0] == "CCL":
                         self.cancel_pub(content[2], content[1])
                         sock.send("DONE_CCL")
-                    elif content[1] == "VAL":
+                    elif content[0] == "VAL":
                         sock.send(self.validate_pub(content[2], content[1]))
                 except IndexError:
                     print("must be invalid message format")
@@ -130,22 +137,22 @@ class Broker:
             sock.bind("tcp://*:" + str(port))
 
             while True:
-                print('waiting for sub')
+                print('waiting for sub ... ')
                 try:
                     content = sock.recv()
-                    print("raw msg from pub port:\n" + content)
+                    print("raw msg from sub port:\n" + content)
                     content = content.split("#")
                     if content[0] == "REG":
                         pub_list = self.register_sub(content[2], content[1])
                         sock.send("DONE_REG#" + str(pub_list))
-                    elif content[1] == "CCL":
+                    elif content[0] == "CCL":
                         self.cancel_sub(content[2], content[1])
                         sock.send("DONE_CCL")
                 except IndexError:
                     print("must be invalid message format")
                 except Exception as ex:
                     print("something happened... " + str(ex))
-                    break
+                    # break
         
         return threading.Thread(target=thr_body, args=(self.sub_port, ))
 

@@ -6,6 +6,7 @@
 
 import zmq
 import time
+import random
 import argparse
 from multiprocessing import Process
 from broker_lib import broker_lib
@@ -46,13 +47,15 @@ def main():
 
     # we first register all the pub and sub
     msg1 = read(pubsocket.recv_string())
-    dict_update(msg1,broker.pubdict)
+    dict_update(msg1,broker.pubdict, broker.publisher)
+    pubsocket.send_string('PUB-Info has been received!')
     
 
     #pubsocket.send_string("Please send me the publisher \n")
 
-    #msg2 = read(subsocket.recv_string)
-    #dict_update(msg2,broker.subdict)
+    msg2 = read(subsocket.recv_string())
+    sdict_update(msg2,broker.subdict, broker.subscriber)
+    subsocket.send_string('SUB-BROKER has been connected')
     
 
     poller=zmq.Poller()
@@ -64,29 +67,48 @@ def main():
         events=dict(poller.poll())
         
         if pubsocket in events:
-            breakpoint()
             # how we deal with the coming publishers
             msg=read(pubsocket.recv_string())
             # add the coming info to the dict
-            dict_update(msg, broker.pubdict)
+            dict_update(msg, broker.pubdict, broker.publisher)
             # reply to pub that this process is done
-            pubsocket.send('Done!!!')
+            pubsocket.send_string('Done!!!')
         
         if subsocket in events:
+            
 
-            topic = subsocket.recv()
-            msg_body = find(topic, broker.pubdict)
+            msg = read(subsocket.recv_string())
+            sdict_update(msg, broker.subdict, broker.subscriber)
+            if msg[0] == 'ask':
+                pub_msg = find(msg[2],broker.pubdict,broker.publisher)
+                subsocket.send_string(pub_msg)
+            elif msg[0] == 'end':
+                time.sleep(1)
+                subsocket.send_string('END!!')
+            elif msg[0] == 'reg':
+                subsocket.send_string('Connected')
+                
 
-
-            subsocket.send_multipart([topic, msg_body])
 
 def read(msg):
     info = msg.split('#')
     return info
 
-def find(topic, dict):
+def find(topic, dict, publisher):
 
-    content = dict[topic]
+    
+    
+    
+    # we pick the first one to PUB
+    if topic in dict:
+        owner = publisher[topic]
+        length = len(dict[owner[0]][topic] )
+        i = random.randint(1, length)
+        content = dict[owner[0]][topic][i-1]
+    else:
+        content = 'Nothing'
+    
+    
 
     # when we receive the request from subs, we look up the dict to find whether there exits the info
     
@@ -94,15 +116,19 @@ def find(topic, dict):
     return content
     
 
-def dict_update(msg, dict):
+def dict_update(msg, pubdict, publisher):
     
     if msg[0] == 'init':
         pubID = msg[1]
         topic = msg[2]
         try:
-            dict.update({topic:[]})
+            #dict.update(topic)
+            pubdict.update({pubID: {topic:[]}})
+            publisher.update({topic:[]})
+            #publisher[topic].update([pubID])
+
             with open(log_file, 'a') as logfile:
-                logfile.write('Init msg: %s init with topic %s\n' % (pubID, topic))
+                logfile.write('PUB-Init msg: %s init with topic %s\n' % (pubID, topic))
         except KeyError:
             pass
 
@@ -112,15 +138,34 @@ def dict_update(msg, dict):
         publish = msg[3]
 
         try:
-            dict[topic].update([publish])
+            #dict[topic].update([publish])
+            pubdict[pubID][topic].append(publish)
+            if pubID not in publisher[topic]:
+                publisher[topic].append(pubID)
+
             with open(log_file, 'a') as logfile:
-                logfile.write('Publication: %s published %s with topic %s\n' % (pubID, publish, topic))
+                logfile.write('Pub No.%s published %s with topic %s\n' % (pubID, publish, topic))
         except KeyError:
             pass
-    '''
+def sdict_update(msg, dict, sub):
+    
+    if msg[0] == 'reg':
+        subID = msg[1]
+        dict.update({subID: []})
+        #sub[topic].append(subID)
     elif msg[0] == 'ask':
-        se = 1
-    '''
+        subID = msg[1]
+        topic = msg[2]
+        dict[subID].append(topic)
+        #sub[topic].append(subID)
+                
+    elif msg[0] == 'end':
+        subID = msg[1]
+        #sub[topic].remove(subID)
+        dict.pop(subID)
+    
+    
+    
 
 if __name__=="__main__":
 	

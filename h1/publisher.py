@@ -8,7 +8,7 @@ import random
 import time
 import threading
 import zmq
-from multiprocessing import Process
+#from multiprocessing import Process
 
 class Pub_Info:
 
@@ -62,6 +62,10 @@ def register_pub(no, topic, baddress,id):
         # send the message
         
         the_socket.send_string( message )
+
+        recv_msg = the_socket.recv_string()
+
+        print(recv_msg)
         
         #return True
 
@@ -94,7 +98,7 @@ def main():
     
     # select the topic randomly
     topic = topics[random.randint(1, 6)]
-    
+    #topic = topics[1]
     # we first init the publish server
     pub = Pub_Info(baddress,'5555',topic)
 
@@ -123,8 +127,14 @@ def main():
     current = time.time()
     
     pubsocket.connect("tcp://" + baddress + ":5555")
-    
-    Process(target= publish(pub, pub.ID, topic, file, list, pubsocket)).start()
+    if pubsocket is None:
+        print('Connection failed.')
+        #return False
+    else:
+        print('Connection succeed!')
+        #Process(target= publish(pub, pub.ID, topic, file, list, pubsocket)).start()
+        #publish(pub, pub.ID, topic, file, list, pubsocket)
+        threading.Thread(target=publish(pub, pub.ID, topic, file, list, pubsocket), args=()).start()
     
     #wait()
 
@@ -137,8 +147,10 @@ def publish(pub, id, topic, file, list, pub_s):
                 logfile.write('Publish Info: %s \n'% topic)
                 logfile.write('Publish: %s\n' % pub)
                 logfile.write('Time: %s\n' % str(time.time()))
-                send = 'publish' + '#' + id + '#' + topic + '#' + pub
-                pub_s.send_string(send)
+                sending = 'publish' + '#' + id + '#' + topic + '#' + pub
+                pub_s.send_string(sending)
+                rcv_msg = pub_s.recv_string()
+                print(rcv_msg)
                 time.sleep(1)
             pub_s.close()
     except IOError:

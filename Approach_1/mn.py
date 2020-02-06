@@ -37,22 +37,62 @@ def parseCmdLineArgs ():
     return args
 
 
-def Test(pubHosts, subHosts, brokerHost, subPort, pubPort):
-    number = 10
+def collectResult():
+    logFiles = [f for f in os.listdir("logs/") if os.path.isfile(os.path.join("logs/", f))]
 
+    print(logFiles)
+
+    subLogs = list(filter(lambda s: "sub_" in s, logFiles))
+    pubLogs = list(filter(lambda s: "pub_" in s, logFiles))
+
+    loggedTime = {}
+
+    for f in pubLogs:
+        fp = open("logs/" + f, "r")
+        logs = fp.read().split("\n")[:-1]
+        for l in logs:
+            print(l)
+            l = l.split(",")
+            loggedTime[l[0]] = eval(l[1])
+        fp.close()
+    
+    cnt = 0
+    sum_delay = 0.0    
+    for f in subLogs:
+        fp = open("logs/" + f, "r")
+        logs = fp.read().split("\n")[:-1]
+        for l in logs:
+            l = l.split(",")
+            try:
+                sum_delay += eval(l[1]) - loggedTime[l[0]]
+                cnt += 1
+            except Exception as ex:
+                print("something wrong: " + str(ex))
+    
+    print("avrg delay:\n" + str(sum_delay/cnt))
+
+
+def Test(pubHosts, subHosts, brokerHost, subPort, pubPort):
+    pubthrList = []
+    subthrList = []
+    number = 10
+    wait_step = 20
+
+    os.system("rm -rf logs/*")
     try:
         broker_ip = brokerHost.IP()
-
+        
         def broker_op():
             # Invoke broker and wait for the broker to be completed
             command = 'xterm -e python3 broker.py -p ' + str(pubPort) + ' -s ' + str(subPort)
             brokerHost.cmd(command)
-
-        threading.Thread(target=broker_op, args=()).start()
+        thr = threading.Thread(target=broker_op, args=())
+        # thrList.append(thr)
+        thr.start()
 
         print ('broker is ready')
 
-        time.sleep(2)
+        time.sleep(1)
 
         for pub in pubHosts:
             
@@ -60,31 +100,60 @@ def Test(pubHosts, subHosts, brokerHost, subPort, pubPort):
                 command1 = 'xterm -e python3 publisher.py -b ' + broker_ip + ' -p ' + str(pubPort)
                 pub.cmd(command1)
             
-            threading.Thread(target=pub_op, args=()).start()
-            
+            thr = threading.Thread(target=pub_op, args=())
+            pubthrList.append(thr)
+
+            thr.start()
             print("pub thread started ... ")
-            time.sleep(2)
+            time.sleep(0.5)
         
         print ('Pubs are ready')
+
         for sub in subHosts:
             
             def sub_op():
                 command2 = 'xterm -e python3 subscriber.py -b ' + broker_ip + ' -p ' + str(subPort)
                 sub.cmd(command2)
             
-            threading.Thread(target=sub_op, args=()).start()
-
+            thr = threading.Thread(target=sub_op, args=())
+            subthrList.append(thr)
+        
+            thr.start()
             print("sub thread started ... ")
-            time.sleep(2)
+            time.sleep(0.5)
         
         print ('Subs are ready')
 
         while True:
-            pass
+            time.sleep(1)
+            print("thread checking .. ")
+            flag = False
+            for thr in subthrList:
+                if not thr.isAlive():
+                    flag = True
+                    break
+            if flag == True:
+                continue
+
+            for thr in pubthrList:
+                if not thr.isAlive():
+                    flag = True
+            if flag == True:
+                continue
+            break
+
+        # while True:
+        #     pass
+
+        # for i in range(wait_step):
+        #     print("remaining steps " + str(wait_step - i))
+        #     time.sleep(2)
 
 
     except Exception as e:
         print(e)
+    
+    return pubthrList
 
 def main ():
     
@@ -115,7 +184,7 @@ def main ():
     pubhosts =[]
     subhosts = []
     brokerhost = None
-    
+
     for host in net.hosts:
         if 'PUB' in host.name:
             pubhosts.append(host)
@@ -124,11 +193,16 @@ def main ():
         elif 'Broker' in host.name:
             brokerhost = host
 
-    Test(pubhosts, subhosts, brokerhost, parsed_args.sub_port, parsed_args.pub_port)
+    thrList = Test(pubhosts, subhosts, brokerhost, parsed_args.sub_port, parsed_args.pub_port)
 
     # CLI(net)
-   
-    net.stop ()
+    print("joining")
+    for thr in thrList:
+        thr.join()
+
+    print("joined")
+
+    collectResult()
 
 if __name__ == '__main__':
     

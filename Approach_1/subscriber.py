@@ -2,6 +2,7 @@ import zmq
 from helpers import get_my_addr
 import threading
 import argparse
+import time
 
 class Subscriber:
     def __init__(self, broker_ip, broker_port):
@@ -10,9 +11,12 @@ class Subscriber:
         self.pub_set = set()
         self.own_address = None
         self.sub_sock = None
+        self.fp = None
+        self.stopped = False
     
     def start(self):
         self.own_address = get_my_addr(self.broker_ip)
+        self.fp = open("logs/sub_" + str(self.own_address[0]) + ":" + str(self.own_address[1]) + ".txt", "w")
         print('my address:\n' + str(self.own_address))
 
         def handler():
@@ -21,6 +25,8 @@ class Subscriber:
             sock.bind("tcp://*:" + str(self.own_address[1]))
 
             while True:
+                if self.stopped == True:
+                    break
                 try:
                     content = sock.recv_string().split("#")
                     print("sub hander content:\n" + str(content))
@@ -44,8 +50,15 @@ class Subscriber:
 
         def playing():
             while True:
+                if self.stopped == True:
+                    break
                 try:
+                    recvContent = self.sub_sock.recv_string()
+                    curTime = time.time()
+                    self.fp.write(recvContent.split("#")[1] + "," + str(curTime) + "\n")
+                    self.fp.flush()
                     print(self.sub_sock.recv_string())
+
                 except Exception as ex:
                     print("exception occured when playing subs: " + ex)
             
@@ -69,6 +82,9 @@ class Subscriber:
                     self.pub_set.add(addr)
         
         self.sub_sock.setsockopt_string(zmq.SUBSCRIBE, topic)
+    
+    def stop():
+        self.stopped = True
 
 
 def parseCmdLineArgs ():

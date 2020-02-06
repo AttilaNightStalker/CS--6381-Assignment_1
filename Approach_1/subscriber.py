@@ -1,6 +1,7 @@
 import zmq
 from helpers import get_my_addr
 import threading
+import argparse
 
 class Subscriber:
     def __init__(self, broker_ip, broker_port):
@@ -11,16 +12,17 @@ class Subscriber:
         self.sub_sock = None
     
     def start(self):
-        self.own_address = get_my_addr()
+        self.own_address = get_my_addr(self.broker_ip)
+        print('my address:\n' + str(self.own_address))
 
-        def handler(my_ip, my_port):
+        def handler():
             self.sub_sock = zmq.Context().socket(zmq.SUB)
             sock = zmq.Context().socket(zmq.REP)
-            sock.bind("tcp://*:" + str(my_port))
+            sock.bind("tcp://*:" + str(self.own_address[1]))
 
             while True:
                 try:
-                    content = sock.recv().split("#")
+                    content = sock.recv_string().split("#")
                     print("sub hander content:\n" + str(content))
 
                     if content[0] == "ADD":
@@ -30,11 +32,11 @@ class Subscriber:
                             print("connecting:\n" + "tcp://" + content[2])
                             self.sub_sock.connect("tcp://" + content[2])
 
-                            sock.send("ADD_TOPIC")
+                            sock.send_string("ADD_TOPIC")
                         else:
-                            sock.send("ADD_NOTHING")
+                            sock.send_string("ADD_NOTHING")
                     else:
-                        sock.send("NOTHING")
+                        sock.send_string("NOTHING")
                 
                 except Exception as ex:
                     print("something happened... " + str(ex))
@@ -43,11 +45,11 @@ class Subscriber:
         def playing():
             while True:
                 try:
-                    print(self.sub_sock.recv())
+                    print(self.sub_sock.recv_string())
                 except Exception as ex:
                     print("exception occured when playing subs: " + ex)
             
-        threading.Thread(target=handler, args=list(self.own_address)).start()
+        threading.Thread(target=handler).start()
         threading.Thread(target=playing).start()
 
 
@@ -56,14 +58,47 @@ class Subscriber:
         print("***** register_sub *****")
         sock = zmq.Context().socket(zmq.REQ)
         sock.connect("tcp://" + str(self.broker_ip) + ":" + str(self.broker_port))
-        sock.send("REG#" + str(self.own_address[0]) + ":" + str(self.own_address[1]) + "#" + topic)
+        sock.send_string("REG#" + str(self.own_address[0]) + ":" + str(self.own_address[1]) + "#" + topic)
 
-        content = sock.recv().split("#")
-        print("***** recv content:\n" + str(content) + "\n*****\n")
+        content = sock.recv_string().split("#")
+        print("***** recv_string content:\n" + str(content) + "\n*****\n")
         if content[0] == "DONE_REG":
             for addr in eval(content[1]):
                 if not addr in self.pub_set:
                     self.sub_sock.connect("tcp://" + addr)
                     self.pub_set.add(addr)
         
-        self.sub_sock.setsockopt(zmq.SUBSCRIBE, topic)
+        self.sub_sock.setsockopt_string(zmq.SUBSCRIBE, topic)
+
+
+def parseCmdLineArgs ():
+    # parse the command line
+    parser = argparse.ArgumentParser ()
+
+    # add optional arguments
+    parser.add_argument ("-b", "--broker", type=str, default='10.0.0.1', help="broker's ip")
+    parser.add_argument ("-p", "--port", type=int, default=5557, help="broker's port")
+    parser.add_argument ("-n", "--number", type=int, default=10, help="number of topics")
+    
+    # parse the args
+    args = parser.parse_args ()
+
+    return args
+
+
+if __name__ == "__main__":
+    import random
+    from time import sleep
+
+    args = parseCmdLineArgs()
+    my_sub = Subscriber(args.broker, args.port)
+    my_sub.start()
+
+    topic_set = set()
+
+    for i in range(args.number):
+        if random.randint(0, 2) > 0:
+            my_sub.register_sub("topic" + str(i))
+            topic_set.add(i)
+    
+    print("topic set is:\n" + str(topic_set))

@@ -1,5 +1,14 @@
 import zmq
 import threading
+import argparse
+
+global_thr = []
+
+def signal_handler(signal, frame):
+    print('You pressed Ctrl+C!')
+    for t in global_thr:
+        t.terminate()
+    sys.exit(0)
 
 class Broker:
     def __init__(self, pub_port, sub_port):
@@ -31,8 +40,8 @@ class Broker:
                 print("sub addr:\n" + sub_addr)
 
                 msg_sock.connect("tcp://" + sub_addr)
-                msg_sock.send("ADD#" + topic + "#" + address)
-                print(msg_sock.recv())
+                msg_sock.send_string("ADD#" + topic + "#" + address)
+                print(msg_sock.recv_string())
             msg_sock.close()
 
     
@@ -60,8 +69,8 @@ class Broker:
             msg_sock = zmq.Context().socket(zmq.REQ)
             for sub_addr in self.topic_sub_map[topic]:
                 msg_sock.connect(sub_addr)
-                msg_sock.send("DEL#" + topic + "#" + address)
-                print(msg_sock.recv())
+                msg_sock.send_string("DEL#" + topic + "#" + address)
+                print(msg_sock.recv_string())
             msg_sock.close()
     
 
@@ -105,7 +114,7 @@ class Broker:
             while True:
                 print('waiting for pub ... ')
                 try:
-                    content = sock.recv()
+                    content = sock.recv_string()
                     print("raw msg from pub port:\n" + content)
                     content = content.split("#")
                     print("splited content:\n" + str(content))
@@ -113,12 +122,12 @@ class Broker:
                         print("is reg")
                         self.register_pub(content[2], content[1])
                         print("sending")
-                        sock.send("DONE_REG")
+                        sock.send_string("DONE_REG")
                     elif content[0] == "CCL":
                         self.cancel_pub(content[2], content[1])
-                        sock.send("DONE_CCL")
+                        sock.send_string("DONE_CCL")
                     elif content[0] == "VAL":
-                        sock.send(self.validate_pub(content[2], content[1]))
+                        sock.send_string(self.validate_pub(content[2], content[1]))
                 except IndexError:
                     print("must be invalid message format")
                 except Exception as ex:
@@ -139,15 +148,15 @@ class Broker:
             while True:
                 print('waiting for sub ... ')
                 try:
-                    content = sock.recv()
+                    content = sock.recv_string()
                     print("raw msg from sub port:\n" + content)
                     content = content.split("#")
                     if content[0] == "REG":
                         pub_list = self.register_sub(content[2], content[1])
-                        sock.send("DONE_REG#" + str(pub_list))
+                        sock.send_string("DONE_REG#" + str(pub_list))
                     elif content[0] == "CCL":
                         self.cancel_sub(content[2], content[1])
-                        sock.send("DONE_CCL")
+                        sock.send_string("DONE_CCL")
                 except IndexError:
                     print("must be invalid message format")
                 except Exception as ex:
@@ -159,6 +168,9 @@ class Broker:
     def start(self):
         pub_thr = self.get_pub_thread()
         sub_thr = self.get_sub_thread()
+        global_thr.append(pub_thr)
+        global_thr.append(sub_thr)
+
 
         pub_thr.start()
         sub_thr.start()
@@ -167,6 +179,25 @@ class Broker:
         sub_thr.join()
 
 
-broker = Broker(5556, 5557)
-broker.start()
+def parseCmdLineArgs ():
+    # parse the command line
+    parser = argparse.ArgumentParser ()
+
+    # add optional arguments
+    parser.add_argument ("-p", "--pub", type=int, default=5557, help="broker's sub port")
+    parser.add_argument ("-s", "--sub", type=int, default=5557, help="broker's pub port")
+
+    
+    # parse the args
+    args = parser.parse_args ()
+
+    return args
+
+
+if __name__ == "__main__":
+    args = parseCmdLineArgs()
+    broker = Broker(args.pub, args.sub)
+    broker.start()
+
+
         

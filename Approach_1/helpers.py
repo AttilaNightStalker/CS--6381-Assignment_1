@@ -1,6 +1,6 @@
 import socket
 
-def get_my_addr():
+def get_my_addr(test_dst):
     tcp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    tcp.connect(('8.8.8.8', 80))
+    tcp.connect((test_dst, 80))
     return tcp.getsockname()

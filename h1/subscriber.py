@@ -97,7 +97,7 @@ def connection(s,t,id, file,content):
             recv_msg = s.recv_string()
             #topic, msg = s.recv_multipart()
             if (recv_msg == 'Nothing')| (recv_msg == 'Connected'):
-                if time.time()-current_time < 10:
+                if time.time()-current_time < 30:
                     time.sleep(1)
                     print('still waiting for the message')
                     m = 'ask' + '#' + id + '#' + t + '#'
@@ -105,22 +105,24 @@ def connection(s,t,id, file,content):
                 else:
                     break
             else:
-                print('Topic: %s, msg:%s' % (topic, recv_msg))
+                
                 if recv_msg not in content:
+                    print('Topic: %s, msg:%s' % (topic, recv_msg))
                     content.append(recv_msg)
                 
                     with open(file, 'a') as log:
                         log.write('Receive from broker' + ' \n')
                         log.write('Topic: ' + topic + '\n') 
                         log.write('Content:' + recv_msg+ '\n')
-                
+
+                    time.sleep(1)
                     m = 'ask' + '#' + id + '#' + t + '#'
                     s.send_string(m)
                 else:
-                    #end = 'end' + '#' + id + '#' 
-                    #s.send_string(end)
-                    s.close()
-                    break
+                    m = 'ask' + '#' + id + '#' + t +'#' 
+                    s.send_string(m)
+                    #s.close()
+                    #break
 
             
     except KeyboardInterrupt:
@@ -131,7 +133,8 @@ def connection(s,t,id, file,content):
             
 
 def main():
-    
+
+    start_time = time.time()
     args = parseCmdLineArgs()
     
     baddress = args.address
@@ -159,6 +162,7 @@ def main():
     sub_logfile = './Output/' + sub.ID + '-subscriber.log'
     
     with open(sub_logfile, 'w') as log:
+        log.write('************************************** \n')
         log.write('ID: ' + sub.ID + '\n')
         log.write('Topic: ' + sub.topic + '\n') 
         log.write('Connection: tcp://%s:%s\n' % (sub.address,sub.port))
@@ -182,6 +186,14 @@ def main():
     # wait for the sub to be registered
     
     time.sleep(5)
+    stop_time=time.time()
+
+    total_time = stop_time - start_time
+
+    with open(sub_logfile, 'a') as log:
+        log.write('Start time: %s \n' % start_time)
+        log.write('Stop time : %s \n' %stop_time) 
+        log.write('Total time: %s \n' %total_time)
 
 
     

@@ -88,7 +88,7 @@ def get_publications(file_path):
 def main():
     
     
-
+    start_time=time.time()
     args = parseCmdLineArgs()
     
     baddress = args.address
@@ -135,6 +135,17 @@ def main():
         #Process(target= publish(pub, pub.ID, topic, file, list, pubsocket)).start()
         #publish(pub, pub.ID, topic, file, list, pubsocket)
         threading.Thread(target=publish(pub, pub.ID, topic, file, list, pubsocket), args=()).start()
+    
+    stop_time=time.time()
+
+    total_time = stop_time - start_time
+
+    with open(file, 'a') as log:
+        log.write('************************************** \n')
+        log.write('Start time: %s \n' % start_time)
+        log.write('Stop time : %s \n' %stop_time) 
+        log.write('Total time: %s \n' %total_time)
+
     
     #wait()
 

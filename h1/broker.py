@@ -100,7 +100,7 @@ def find(topic, dict, publisher):
     
     
     # we pick the first one to PUB
-    if topic in dict:
+    if topic in publisher:
         owner = publisher[topic]
         length = len(dict[owner[0]][topic] )
         i = random.randint(1, length)

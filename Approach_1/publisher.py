@@ -52,7 +52,7 @@ def parseCmdLineArgs ():
     parser.add_argument ("-b", "--broker", type=str, default='10.0.0.1', help="broker's ip")
     parser.add_argument ("-p", "--port", type=int, default=5556, help="broker's port")
     parser.add_argument ("-n", "--number", type=int, default=10, help="number of topics")
-    parser.add_argument ("-t", "--times", type=int, default=60, help="publishing times")
+    parser.add_argument ("-t", "--times", type=int, default=120, help="publishing times")
     
     # parse the args
     args = parser.parse_args ()

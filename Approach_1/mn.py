@@ -94,20 +94,6 @@ def Test(pubHosts, subHosts, brokerHost, subPort, pubPort):
 
         time.sleep(1)
 
-        for pub in pubHosts:
-            
-            def pub_op():
-                command1 = 'xterm -e python3 publisher.py -b ' + broker_ip + ' -p ' + str(pubPort)
-                pub.cmd(command1)
-            
-            thr = threading.Thread(target=pub_op, args=())
-            pubthrList.append(thr)
-
-            thr.start()
-            print("pub thread started ... ")
-            time.sleep(0.5)
-        
-        print ('Pubs are ready')
 
         for sub in subHosts:
             
@@ -124,23 +110,20 @@ def Test(pubHosts, subHosts, brokerHost, subPort, pubPort):
         
         print ('Subs are ready')
 
-        while True:
-            time.sleep(1)
-            print("thread checking .. ")
-            flag = False
-            for thr in subthrList:
-                if not thr.isAlive():
-                    flag = True
-                    break
-            if flag == True:
-                continue
+        for pub in pubHosts:
+            
+            def pub_op():
+                command1 = 'xterm -e python3 publisher.py -b ' + broker_ip + ' -p ' + str(pubPort)
+                pub.cmd(command1)
+            
+            thr = threading.Thread(target=pub_op, args=())
+            pubthrList.append(thr)
 
-            for thr in pubthrList:
-                if not thr.isAlive():
-                    flag = True
-            if flag == True:
-                continue
-            break
+            thr.start()
+            print("pub thread started ... ")
+            time.sleep(0.5)
+        
+        print ('Pubs are ready')
 
         # while True:
         #     pass

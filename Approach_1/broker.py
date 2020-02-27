@@ -168,8 +168,8 @@ class Broker:
     def start(self):
         pub_thr = self.get_pub_thread()
         sub_thr = self.get_sub_thread()
-        global_thr.append(pub_thr)
-        global_thr.append(sub_thr)
+        # global_thr.append(pub_thr)
+        # global_thr.append(sub_thr)
 
 
         pub_thr.start()

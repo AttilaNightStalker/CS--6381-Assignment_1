@@ -99,7 +99,9 @@ if __name__ == "__main__":
             my_pub.register_pub("topic" + str(i))
             topic_set.add(i)
     
-    print("topic set is:\n" + str(topic_set))
+    if (topic_set == set()):
+        topic_set = set({randint(0, args.number)})
+    # print("topic set is:\n" + str(topic_set))
     
     cnt = args.times
     while cnt > 0:

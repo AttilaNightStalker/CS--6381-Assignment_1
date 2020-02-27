@@ -17,7 +17,7 @@ class Stopo(Topo):
         print('Add a switch.')
 
         # Add broker host
-        self.brokerHost = self.addHost('Broker')
+        self.brokerHost = self.addHost('Broker', cpu=0.02)
         print('Add Broker host')
 
         # Add link between switch and broker host
@@ -26,7 +26,7 @@ class Stopo(Topo):
 
         # Add publisher hosts to the switch
         for i in range(pub):
-            host = self.addHost('PUB%d' % (i+1))
+            host = self.addHost('PUB%d' % (i+1), cpu=0.02)
             self.pubHosts.append(host)
             
             self.addLink(self.pubHosts[i], self.switch)
@@ -34,7 +34,7 @@ class Stopo(Topo):
 
         # Add subscriber hosts to the switch
         for i in range(sub):
-            host = self.addHost('SUB%d' % (i+1))
+            host = self.addHost('SUB%d' % (i+1), cpu=0.02)
             self.subHosts.append(host)
             
             self.addLink(self.subHosts[i], self.switch)

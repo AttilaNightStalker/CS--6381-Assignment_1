@@ -121,7 +121,7 @@ def Test(pubHosts, subHosts, brokerHost, subPort, pubPort):
 
             thr.start()
             print("pub thread started ... ")
-            time.sleep(0.5)
+            # time.sleep(0.1)
         
         print ('Pubs are ready')
 
@@ -161,7 +161,7 @@ def main ():
     
     
     
-    net.pingAll ()
+    # net.pingAll ()
 
 
     pubhosts =[]

@@ -15,4 +15,8 @@ run code with:
 
 `python3 mn.py -p <number of publishers> -s <number of subscribers>`
 
-Then the average message time delay will be calculated after publisher have published 60 posts
+Then the average message time delay will be calculated after publisher have published 120 posts
+
+### The result graph
+
+The images named "graph_view*.png" are 3D graphs of the result data
